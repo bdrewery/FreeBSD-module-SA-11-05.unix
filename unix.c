@@ -16,12 +16,13 @@
 
 // Handle FreeBSD-SA-11:05.unix here
 static int
-validate_sun_len(struct sockaddr* sa)
+validate_sun_len(struct thread *td, struct sockaddr* sa)
 {
 	if (sa->sa_family == AF_UNIX) {
 		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
 		// Validate length
 		if (soun->sun_len > sizeof(struct sockaddr_un)) {
+			printf("BLOCKED SA-11:05.unix uid(%d) pid(%d) ppid(%d) path(%s)\n", td->td_ucred->cr_uid, td->td_proc->p_pid, td->td_proc->p_pptr->p_pid, soun->sun_path);
 			return 1;
 		}
 	}
@@ -39,7 +40,7 @@ hook_bind(struct thread *td, void *uvp)
 		return (error);
 
 	// Handle FreeBSD-SA-11:05.unix here
-	if (validate_sun_len(sa)) {
+	if (validate_sun_len(td, sa)) {
 		free(sa, M_SONAME);
 		return (EINVAL);
 	}
@@ -61,7 +62,7 @@ hook_connect(struct thread *td, void *uvp)
 		return (error);
 
 	// Handle FreeBSD-SA-11:05.unix here
-	if (validate_sun_len(sa)) {
+	if (validate_sun_len(td, sa)) {
 		free(sa, M_SONAME);
 		return (EINVAL);
 	}
