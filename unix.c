@@ -14,6 +14,19 @@
 #include <sys/syscallsubr.h>
 #include <sys/un.h>
 
+// Handle FreeBSD-SA-11:05.unix here
+static int
+validate_sun_len(struct sockaddr* sa)
+{
+	if (sa->sa_family == AF_UNIX) {
+		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
+		// Validate length
+		if (soun->sun_len > sizeof(struct sockaddr_un)) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static int
 hook_bind(struct thread *td, void *uvp)
@@ -26,13 +39,9 @@ hook_bind(struct thread *td, void *uvp)
 		return (error);
 
 	// Handle FreeBSD-SA-11:05.unix here
-	if (sa->sa_family == AF_UNIX) {
-		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
-		// Validate length
-		if (soun->sun_len > sizeof(struct sockaddr_un)) {
-			free(sa, M_SONAME);
-			return (EINVAL);
-		}
+	if (validate_sun_len(sa)) {
+		free(sa, M_SONAME);
+		return (EINVAL);
 	}
 
 	error = kern_bind(td, uap->s, sa);
@@ -52,13 +61,9 @@ hook_connect(struct thread *td, void *uvp)
 		return (error);
 
 	// Handle FreeBSD-SA-11:05.unix here
-	if (sa->sa_family == AF_UNIX) {
-		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
-		// Validate length
-		if (soun->sun_len > sizeof(struct sockaddr_un)) {
-			free(sa, M_SONAME);
-			return (EINVAL);
-		}
+	if (validate_sun_len(sa)) {
+		free(sa, M_SONAME);
+		return (EINVAL);
 	}
 
 	error = kern_connect(td, uap->s, sa);
