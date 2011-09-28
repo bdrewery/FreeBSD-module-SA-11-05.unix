@@ -39,10 +39,41 @@ hook_bind(struct thread *td, void *uvp)
 	return (error);
 }
 
+static int
+hook_connect(struct thread *td, void *uvp)
+{
+	struct connect_args *uap = uvp;
+	struct sockaddr *sa;
+	int error;
+
+	error = getsockaddr(&sa, uap->name, uap->namelen);
+	if (error)
+		return (error);
+
+	// Handle FreeBSD-SA-11:05.unix here
+	if (sa->sa_family == AF_UNIX) {
+		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
+		// Validate length
+		if (soun->sun_len > sizeof(struct sockaddr_un)) {
+			return (EINVAL);
+		}
+	}
+
+	error = kern_connect(td, uap->s, sa);
+	free(sa, M_SONAME);
+	return (error);
+}
+
 static struct sysent
 hook_bind_sysent = {
        1,
        hook_bind			/* sy_call */
+};
+
+static struct sysent
+hook_connect_sysent = {
+       1,
+       hook_connect			/* sy_call */
 };
 
 
@@ -55,9 +86,11 @@ dummy_handler (struct module *module, int cmd, void *arg)
  switch (cmd) {
   case MOD_LOAD :
    sysent[SYS_bind]=hook_bind_sysent;
+   sysent[SYS_connect]=hook_connect_sysent;
   break;
   case MOD_UNLOAD :
    sysent[SYS_bind].sy_call=(sy_call_t*)bind;
+   sysent[SYS_connect].sy_call=(sy_call_t*)connect;
   break;
   default :
    error = EINVAL;
