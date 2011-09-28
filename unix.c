@@ -30,6 +30,7 @@ hook_bind(struct thread *td, void *uvp)
 		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
 		// Validate length
 		if (soun->sun_len > sizeof(struct sockaddr_un)) {
+			free(sa, M_SONAME);
 			return (EINVAL);
 		}
 	}
@@ -55,6 +56,7 @@ hook_connect(struct thread *td, void *uvp)
 		struct sockaddr_un *soun = (struct sockaddr_un*) sa;
 		// Validate length
 		if (soun->sun_len > sizeof(struct sockaddr_un)) {
+			free(sa, M_SONAME);
 			return (EINVAL);
 		}
 	}
