@@ -72,19 +72,6 @@ hook_connect(struct thread *td, void *uvp)
 	return (error);
 }
 
-static struct sysent
-hook_bind_sysent = {
-       1,
-       hook_bind			/* sy_call */
-};
-
-static struct sysent
-hook_connect_sysent = {
-       1,
-       hook_connect			/* sy_call */
-};
-
-
 /*our load function*/
 static int
 dummy_handler (struct module *module, int cmd, void *arg)
@@ -93,8 +80,8 @@ dummy_handler (struct module *module, int cmd, void *arg)
 
  switch (cmd) {
   case MOD_LOAD :
-   sysent[SYS_bind]=hook_bind_sysent;
-   sysent[SYS_connect]=hook_connect_sysent;
+   sysent[SYS_bind].sy_call=(sy_call_t*)hook_bind;
+   sysent[SYS_connect].sy_call=(sy_call_t*)hook_connect;
   break;
   case MOD_UNLOAD :
    sysent[SYS_bind].sy_call=(sy_call_t*)bind;
